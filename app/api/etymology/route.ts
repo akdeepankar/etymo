@@ -14,10 +14,32 @@ export async function POST(req: Request) {
             const openai = new OpenAI({ apiKey: apiKey });
             const completion = await openai.chat.completions.create({
                 messages: [
-                    { role: "system", content: "You are an expert etymologist. Provide the etymology of the word in JSON format with fields: root (object with word, language, meaning, year: number, location: { lat: number, lng: number }), path (array of objects with word, language, meaning, year: number, location: { lat: number, lng: number }), and current (object with word, language, meaning, year: number, location: { lat: number, lng: number }). approximate the location based on the language origin region. approximate the year (negative for BC)." },
-                    { role: "user", content: `Trace the etymology of "${word}".` }
+                    {
+                        role: "system",
+                        content: `You are an expert historical linguist and etymologist. Tracing the history of words with high precision.
+                        
+                        Current Task: Trace the etymology of the given word.
+                        
+                        Output Format: JSON object with the following structure:
+                        {
+                            "root": { "word": string, "language": string, "meaning": string (detailed), "year": number (negative for BC), "location": { "lat": number, "lng": number, "country_code": string (ISO 2-letter code) } },
+                            "path": [
+                                { "word": string, "language": string, "meaning": string (detailed), "year": number, "location": { "lat": number, "lng": number, "country_code": string (ISO 2-letter code) } }
+                            ],
+                            "current": { "word": string, "language": string, "meaning": string (detailed), "year": number, "location": { "lat": number, "lng": number, "country_code": string (ISO 2-letter code) } }
+                        }
+
+                        Rules:
+                        1. **Detailed & Non-Repetitive**: Ensure each step in the 'path' represents a distinct evolutionary stage. Do NOT repeat the same word/language unless there was a significant shift in meaning or location.
+                        2. **Historical Accuracy**: Use precise historical years and specific geographic coordinates (latitude/longitude) for the region where that form of the word was dominant. Include the modern ISO 2-character Country Code for that location.
+                        3. **Rich Context**: The 'meaning' field should be descriptive, explaining distinct nuances of that era's usage.
+                        4. **Granularity**: Provide at least 4-6 intermediate steps in the 'path' if the word's history allows.
+                        5. **Timeline**: Ensure chronological order from root -> path -> current.
+                        `
+                    },
+                    { role: "user", content: `Trace the detailed etymology of "${word}".` }
                 ],
-                model: "gpt-3.5-turbo",
+                model: "gpt-4o", // Upgrading to 4o for better detail if key supports it, otherwise fallback logic might be needed but usually keys work for both if paid.
                 response_format: { type: "json_object" }
             });
 

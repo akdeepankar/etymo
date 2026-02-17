@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Globe from '@/components/Globe';
 import Timeline from '@/components/Timeline';
 import ActionPanel from '@/components/ActionPanel';
@@ -14,6 +14,43 @@ export default function Home() {
   const [predictionResult, setPredictionResult] = useState<any>(null);
   const [markers, setMarkers] = useState<any[]>([]);
   const [timelineRange, setTimelineRange] = useState<{ min: number; max: number } | null>(null);
+  const [timelineSteps, setTimelineSteps] = useState<number[]>([]);
+
+  // UI States
+  const [hasSearched, setHasSearched] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Playback Logic
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying && timelineSteps.length > 0) {
+      interval = setInterval(() => {
+        setYear((currentYear) => {
+          const currentIndex = timelineSteps.indexOf(currentYear);
+          // If we are at the end or valid index not found (shouldn't happen), stop
+          if (currentIndex === -1 || currentIndex >= timelineSteps.length - 1) {
+            setIsPlaying(false);
+            return currentYear;
+          }
+          // Move to next step
+          return timelineSteps[currentIndex + 1];
+        });
+      }, 2000); // 2 seconds per step for "one by one" animation
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, timelineSteps]);
+
+  const togglePlay = () => {
+    if (!isPlaying && timelineSteps.length > 0) {
+      // If at end, restart
+      if (year >= timelineSteps[timelineSteps.length - 1]) {
+        setYear(timelineSteps[0]);
+      }
+    }
+    setIsPlaying(!isPlaying);
+  };
 
   const handleSearch = async (term: string) => {
     console.log(`Searching for: ${term}`);
@@ -23,6 +60,11 @@ export default function Home() {
     setPredictionResult(null);
     setMarkers([]);
     setTimelineRange(null);
+    setTimelineSteps([]);
+    // Reset year to minimum to prevent flashing next results
+    setYear(-5000);
+    setIsLoading(true);
+    setHasSearched(true);
 
     const openaiKey = localStorage.getItem('openai_api_key');
 
@@ -45,31 +87,58 @@ export default function Home() {
 
         if (etymologyData.root) {
           if (etymologyData.root.location) {
-            newMarkers.push({ ...etymologyData.root.location, label: etymologyData.root.language });
+            newMarkers.push({
+              ...etymologyData.root.location,
+              label: etymologyData.root.language,
+              year: etymologyData.root.year, // Add year! 
+              word: etymologyData.root.word // Add word!
+            });
           }
           if (etymologyData.root.year) minYear = Math.min(minYear, etymologyData.root.year);
         }
 
+        const uniqueYears = new Set<number>();
+        if (etymologyData.root?.year) uniqueYears.add(etymologyData.root.year);
+
         if (etymologyData.path) {
           etymologyData.path.forEach((step: any) => {
             if (step.location) {
-              newMarkers.push({ ...step.location, label: step.language });
+              newMarkers.push({
+                ...step.location,
+                label: step.language,
+                year: step.year, // Add year!
+                word: step.word // Add word!
+              });
             }
-            if (step.year) minYear = Math.min(minYear, step.year);
+            if (step.year) uniqueYears.add(step.year);
           });
         }
 
         if (etymologyData.current) {
           if (etymologyData.current.location) {
-            newMarkers.push({ ...etymologyData.current.location, label: etymologyData.current.language });
+            newMarkers.push({
+              ...etymologyData.current.location,
+              label: etymologyData.current.language,
+              year: etymologyData.current.year, // Add year!
+              word: etymologyData.current.word // Add word!
+            });
           }
-          // Current is likely close to maxYear via logic, but if provided use it?
-          if (etymologyData.current.year) minYear = Math.min(minYear, etymologyData.current.year);
+          if (etymologyData.current.year) uniqueYears.add(etymologyData.current.year);
         }
 
+        const sortedSteps = Array.from(uniqueYears).sort((a, b) => a - b);
+
+        // Critical: Update year and steps BEFORE markers to prevent "flash of all content"
+        // if the previous year was 2024.
+        setTimelineSteps(sortedSteps);
+        if (sortedSteps.length > 0) {
+          setYear(sortedSteps[0]);
+          setIsPlaying(true);
+        }
+
+        // Now set markers, which will use the newly set Correct Year
         setMarkers(newMarkers);
-        setTimelineRange({ min: minYear, max: maxYear });
-        setYear(maxYear); // Start at present
+        setTimelineRange({ min: sortedSteps[0], max: sortedSteps[sortedSteps.length - 1] });
 
       } else {
         console.error("Etymology fetch failed");
@@ -91,43 +160,57 @@ export default function Home() {
 
     } catch (error) {
       console.error("Failed to fetch data", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <main className="relative w-full h-screen overflow-hidden bg-black text-white">
-      <Settings />
+      <Settings isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
       {/* Sidebar for details */}
-      <Sidebar data={searchResult} onClose={() => {
-        setSearchResult(null);
-        setTimelineRange(null);
-      }} />
+      <Sidebar
+        data={searchResult}
+        currentYear={year}
+        onYearSelect={(selectedYear) => {
+          setYear(selectedYear);
+          setIsPlaying(false); // Pause playback if user manually jumps
+        }}
+      />
 
       <div className="absolute inset-0 z-0">
-        <Globe markers={markers} />
+        <Globe markers={markers} year={year} />
       </div>
 
       <div className="relative z-10 flex flex-col h-full pointer-events-none">
         {/* Pointer events auto for interactive elements */}
         <div className="pointer-events-auto">
-          <ActionPanel onSearch={handleSearch} />
+          <ActionPanel
+            onSearch={handleSearch}
+            isCompact={hasSearched}
+            isLoading={isLoading}
+            onOpenSettings={() => setShowSettings(true)}
+          />
         </div>
 
         {/* Results Area - Future styling can function similarly to Sidebar or float */}
-        <div className="flex-1 w-full pointer-events-auto flex justify-end p-10">
+        <div className="flex-1 w-full flex justify-end p-10 pointer-events-none">
           {year > 2024 && predictionResult && (
-            <FuturePrediction data={{ ...predictionResult, year }} />
+            <div className="pointer-events-auto">
+              <FuturePrediction data={{ ...predictionResult, year }} />
+            </div>
           )}
         </div>
 
         <div className="pointer-events-auto pb-10">
-          {timelineRange && (
+          {timelineSteps.length > 0 && (
             <Timeline
               year={year}
               setYear={setYear}
-              min={timelineRange.min}
-              max={timelineRange.max}
+              steps={timelineSteps}
+              isPlaying={isPlaying}
+              onTogglePlay={togglePlay}
             />
           )}
         </div>

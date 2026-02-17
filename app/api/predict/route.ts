@@ -13,10 +13,32 @@ export async function POST(req: Request) {
             const openai = new OpenAI({ apiKey: apiKey });
             const completion = await openai.chat.completions.create({
                 messages: [
-                    { role: "system", content: `You are a linguistic futurist. Predict how the word "${word}" might evolve by the year ${year} given the context "${context || 'General Evolution'}". Return JSON with fields: year, word (evolved spelling), phonetic, context, definition, example, post (short social media style post).` },
-                    { role: "user", content: `Predict the evolution of "${word}" in ${year}.` }
+                    {
+                        role: "system",
+                        content: `You are a visionary linguistic futurist. Predict the evolution of a word based on current technological, social, and cultural trends.
+                        
+                        Task: Predict the form and usage of the word "${word}" in the year ${year}.
+                        
+                        Output JSON:
+                        {
+                            "year": number,
+                            "word": string (evolved spelling),
+                            "phonetic": string (IPA),
+                            "context": string (e.g., "Space Colonization", "Neural Interfaces", "Hyper-Capitalism"),
+                            "definition": string (detailed definition),
+                            "example": string (usage in a sentence),
+                            "post": string (a realistic social media post or message from that era using the word)
+                        }
+
+                        Rules:
+                        1. **Creativity & Logic**: The evolution should follow linguistic principles (simplification, compounding, etc.) but be influenced by the specified context.
+                        2. **Detailed World-Building**: The definition and example should hint at the state of the world in ${year}.
+                        3. **No lazyness**: Do not just add "cyber-" or "-X". Think about how pronunciation and spelling drift over centuries.
+                        `
+                    },
+                    { role: "user", content: `Predict the detailed evolution of "${word}" in the year ${year} assuming a context of ${context || 'radical technological integration'}.` }
                 ],
-                model: "gpt-3.5-turbo",
+                model: "gpt-4o",
                 response_format: { type: "json_object" }
             });
 

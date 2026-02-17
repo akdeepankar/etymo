@@ -1,64 +1,112 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 
 interface SidebarProps {
     data: any;
-    onClose?: () => void;
+    currentYear?: number;
+    onYearSelect?: (year: number) => void;
 }
 
-export default function Sidebar({ data, onClose }: SidebarProps) {
+export default function Sidebar({ data, currentYear = 2024, onYearSelect }: SidebarProps) {
+    const [isMinimized, setIsMinimized] = useState(false);
+    const activeRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (activeRef.current) {
+            activeRef.current.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+            });
+        }
+    }, [currentYear]);
+
     if (!data) return null;
+
+    // Helper to check if a step is "active" (happened in the past relative to currentYear)
+    const isActive = (stepYear: number) => stepYear <= currentYear;
+    const isCurrent = (stepYear: number) => stepYear === currentYear;
+
+    // Helper for handling click
+    const handleClick = (year?: number) => {
+        if (year !== undefined && onYearSelect) {
+            onYearSelect(year);
+        }
+    };
 
     return (
         <motion.div
             initial={{ x: -400, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
+            animate={{
+                x: isMinimized ? '-100%' : 0,
+                opacity: 1
+            }}
             exit={{ x: -400, opacity: 0 }}
-            className="fixed left-0 top-0 h-full w-96 bg-black/60 backdrop-blur-xl border-r border-white/10 z-40 flex flex-col"
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed left-4 top-24 bottom-6 w-96 bg-black/60 backdrop-blur-xl border border-white/10 z-40 flex flex-col shadow-2xl rounded-2xl"
         >
-            <div className="p-6 border-b border-white/10 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-white font-serif">Word Details</h2>
-                {onClose && (
-                    <button onClick={onClose} className="text-white/50 hover:text-white transition-colors">
-                        <X className="w-5 h-5" />
-                    </button>
-                )}
-            </div>
+            {/* Toggle Button */}
+            <button
+                onClick={() => setIsMinimized(!isMinimized)}
+                className="absolute -right-12 top-2 bg-black/80 backdrop-blur border border-l-0 border-white/20 p-2 rounded-r-xl text-white shadow-lg flex items-center justify-center hover:bg-black hover:text-blue-400 transition-all"
+                title={isMinimized ? "Expand Sidebar" : "Minimize Sidebar"}
+            >
+                {isMinimized ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
+            </button>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                {/* Current Word Info */}
-                <div>
+            <div className={`flex-1 flex flex-col h-full overflow-hidden ${isMinimized ? 'opacity-0 pointer-events-none' : 'opacity-100'} transition-opacity duration-200`}>
+
+
+                {/* Fixed Current Word Info */}
+                <div
+                    onClick={() => handleClick(data.current.year)}
+                    ref={isCurrent(data.current.year ?? 2024) ? activeRef : null}
+                    className={`p-6 border-b border-white/10 cursor-pointer transition-all duration-300 shrink-0 ${isActive(data.current.year ?? 2024) ? 'opacity-100' : 'opacity-50'} ${isCurrent(data.current.year ?? 2024) ? 'bg-blue-500/20 border-l-4 border-l-blue-400' : ''}`}
+                >
                     <div className="text-xs font-mono uppercase text-blue-400 mb-2 tracking-widest">Current</div>
                     <div className="text-4xl font-bold text-white font-serif mb-1">{data.current.word}</div>
-                    <div className="text-sm text-white/60 mb-2">{data.current.language}</div>
+                    <div className="text-sm text-white/60 mb-2">{data.current.language} {data.current.year ? `(${data.current.year})` : ''}</div>
                     <div className="text-base text-white/80 italic">"{data.current.meaning}"</div>
                 </div>
 
-                <div className="border-t border-white/10" />
-
-                {/* Evolution Path */}
-                <div>
-                    <h3 className="text-xs font-mono uppercase text-white/50 mb-6 tracking-widest">Evolutionary Path</h3>
-                    <div className="relative border-l-2 border-white/10 ml-3 pl-8 py-2 space-y-10">
-                        {/* Root */}
-                        <div className="relative group">
-                            <div className="absolute -left-[41px] top-1.5 w-4 h-4 rounded-full bg-blue-600 border-4 border-black box-content group-hover:scale-110 transition-transform" />
-                            <div className="text-xl font-bold text-white font-serif">{data.root.word}</div>
-                            <div className="text-xs text-blue-400 font-medium mb-1">{data.root.language}</div>
-                            <div className="text-sm text-white/60 italic">"{data.root.meaning}"</div>
-                        </div>
-
-                        {/* Middle Steps */}
-                        {data.path.map((step: any, index: number) => (
-                            <div key={index} className="relative group">
-                                <div className="absolute -left-[39px] top-2 w-2 h-2 rounded-full bg-white/30 group-hover:bg-white transition-colors" />
-                                <div className="text-lg font-medium text-white/90 font-serif">{step.word}</div>
-                                <div className="text-xs text-white/40 mb-1">{step.language}</div>
-                                <div className="text-sm text-white/50 italic">"{step.meaning}"</div>
+                {/* Scrollable Evolution Path */}
+                <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
+                    <div>
+                        <h3 className="text-xs font-mono uppercase text-white/50 mb-4 tracking-widest sticky top-0 bg-black/80 backdrop-blur py-3 px-6 z-10 w-full border-b border-white/5">Evolutionary Path</h3>
+                        <div className="relative border-l-2 border-white/10 ml-9 pl-6 py-4 space-y-8 pr-4">
+                            {/* Root */}
+                            <div
+                                onClick={() => handleClick(data.root.year)}
+                                ref={isCurrent(data.root.year ?? -3000) ? activeRef : null}
+                                className={`relative group cursor-pointer transition-all duration-300 rounded-xl p-3 -ml-3 ${isActive(data.root.year ?? -3000) ? 'opacity-100' : 'opacity-40 grayscale'} ${isCurrent(data.root.year ?? -3000) ? 'bg-blue-500/20 ring-1 ring-blue-500/50 shadow-lg shadow-blue-500/10' : 'hover:bg-white/5'}`}
+                            >
+                                <div className={`absolute -left-[41px] top-6 w-4 h-4 rounded-full border-4 border-black box-content transition-colors ${isActive(data.root.year ?? -3000) ? 'bg-blue-600 scale-110' : 'bg-white/20'} group-hover:scale-125`} />
+                                <div className="text-xl font-bold text-white font-serif group-hover:text-blue-400 transition-colors">{data.root.word}</div>
+                                <div className="text-xs text-blue-400 font-medium mb-1">{data.root.language} {data.root.year ? `(${data.root.year})` : ''}</div>
+                                <div className="text-sm text-white/60 italic">"{data.root.meaning}"</div>
                             </div>
-                        ))}
+
+                            {/* Middle Steps */}
+                            {data.path.map((step: any, index: number) => {
+                                const active = isActive(step.year ?? 0);
+                                const current = isCurrent(step.year ?? 0);
+                                return (
+                                    <div
+                                        key={index}
+                                        onClick={() => handleClick(step.year)}
+                                        ref={current ? activeRef : null}
+                                        className={`relative group cursor-pointer transition-all duration-300 rounded-xl p-3 -ml-3 ${active ? 'opacity-100' : 'opacity-40 grayscale'} ${current ? 'bg-blue-500/20 ring-1 ring-blue-500/50 shadow-lg shadow-blue-500/10' : 'hover:bg-white/5'}`}
+                                    >
+                                        <div className={`absolute -left-[39px] top-6 w-2 h-2 rounded-full transition-colors ${active ? 'bg-white shadow-[0_0_10px_white]' : 'bg-white/20'} group-hover:scale-150`} />
+                                        <div className="text-lg font-medium text-white/90 font-serif group-hover:text-blue-300 transition-colors">{step.word}</div>
+                                        <div className="text-xs text-white/40 mb-1">{step.language} {step.year ? `(${step.year})` : ''}</div>
+                                        <div className="text-sm text-white/50 italic">"{step.meaning}"</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
