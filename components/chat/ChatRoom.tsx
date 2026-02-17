@@ -1,17 +1,19 @@
 'use client';
 import { supabase } from '@/lib/supabaseClient';
 import { useState, useEffect, useRef } from 'react';
-import { Send, Share2, Trash2, Check, X, Bookmark } from 'lucide-react';
+import { Send, Share2, Trash2, Check, X, Bookmark, Languages, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { translateChat } from '@/app/actions/translate';
 
 interface ChatRoomProps {
     groupId: string;
     currentWordData: any; // The whole object (root, path, current)
     onViewSharedWord: (data: any) => void;
+    currentLanguage?: string;
 }
 
-export default function ChatRoom({ groupId, currentWordData, onViewSharedWord }: ChatRoomProps) {
+export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, currentLanguage = 'en' }: ChatRoomProps) {
     const [messages, setMessages] = useState<any[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -21,6 +23,82 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord }:
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [isSharing, setIsSharing] = useState(false);
     const [savedWordKeys, setSavedWordKeys] = useState<Set<string>>(new Set());
+
+    const [translatedMessages, setTranslatedMessages] = useState<any[]>([]);
+    const [isTranslating, setIsTranslating] = useState(false);
+
+    // Automatic translation effect
+    useEffect(() => {
+        const autoTranslate = async () => {
+            if (!messages.length) return;
+            if (!currentUserId) return; // Wait for user ID to be loaded
+
+            setIsTranslating(true);
+            try {
+                const cacheKey = `chat_cache_${groupId}_${currentLanguage}`;
+                let translationCache: Record<string, string> = {};
+
+                try {
+                    const cachedData = sessionStorage.getItem(cacheKey);
+                    if (cachedData) {
+                        translationCache = JSON.parse(cachedData);
+                    }
+                } catch (e) { console.warn("Cache load failed", e); }
+
+                // Identify which messages need translation
+                // (Not my message AND not in cache)
+                const messagesToTranslate = messages.filter(msg =>
+                    msg.user_id !== currentUserId && !translationCache[msg.id]
+                );
+
+                if (messagesToTranslate.length > 0) {
+                    // Prepare conversation format for SDK
+                    const conversation = messagesToTranslate.map(msg => ({
+                        name: msg.profile?.display_name || 'Unknown',
+                        text: msg.content || ''
+                    }));
+
+                    const translated = await translateChat(conversation, currentLanguage);
+
+                    // Update cache
+                    translated.forEach((tMsg, index) => {
+                        const originalMsg = messagesToTranslate[index];
+                        if (tMsg && tMsg.text) {
+                            translationCache[originalMsg.id] = tMsg.text;
+                        }
+                    });
+
+                    // Save cache
+                    try {
+                        sessionStorage.setItem(cacheKey, JSON.stringify(translationCache));
+                    } catch (e) { console.warn("Cache save failed", e); }
+                }
+
+                // Construct view using updated cache
+                const mapped = messages.map((msg) => {
+                    if (msg.user_id === currentUserId) {
+                        return msg; // Keep my messages original
+                    }
+                    // Use cached translation if available, else fallback to original
+                    const translatedText = translationCache[msg.id];
+                    return {
+                        ...msg,
+                        content: translatedText || msg.content,
+                        original_content: msg.content
+                    };
+                });
+
+                setTranslatedMessages(mapped);
+            } catch (error) {
+                console.error("Auto-translation failed", error);
+            } finally {
+                setIsTranslating(false);
+            }
+        };
+
+        const timeoutId = setTimeout(autoTranslate, 500);
+        return () => clearTimeout(timeoutId);
+    }, [messages, currentLanguage, currentUserId, groupId]);
 
     useEffect(() => {
         // Get current user id
@@ -64,6 +142,8 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord }:
                         if (prev.some(m => m.id === data.id)) return prev;
                         return [...prev, data];
                     });
+
+                    // Note: Translation will happen automatically via the useEffect dependent on `messages`
                     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
                 }
             })
@@ -75,6 +155,8 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord }:
             supabase.removeChannel(channel);
         };
     }, [groupId]);
+
+    // Auto-translation logic handled in useEffect above
 
     const fetchSavedWords = async (userId: string) => {
         const { data } = await supabase
@@ -181,6 +263,8 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord }:
         }
     };
 
+    const displayMessages = (translatedMessages.length > 0) ? translatedMessages : messages;
+
     return (
         <div className="flex flex-col h-full bg-black/90 text-white">
             {/* Header */}
@@ -202,12 +286,18 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord }:
                         <Share2 className="w-3 h-3" />
                         Share Word
                     </button>
+                    {isTranslating && (
+                        <span className="flex items-center gap-1 text-blue-400 animate-pulse">
+                            <Languages className="w-3 h-3" />
+                            Translating...
+                        </span>
+                    )}
                 </div>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-6 no-scrollbar">
-                {messages.map((msg) => {
+                {displayMessages.map((msg) => {
                     const isOwn = msg.user_id === currentUserId;
                     const profile = msg.profile;
 

@@ -13,9 +13,10 @@ interface ChatSidebarProps {
     onLoadSharedWord: (data: any) => void;
     isOpen: boolean;
     onClose: () => void;
+    currentLanguage?: string;
 }
 
-export default function ChatSidebar({ currentWordData, onLoadSharedWord, isOpen, onClose }: ChatSidebarProps) {
+export default function ChatSidebar({ currentWordData, onLoadSharedWord, isOpen, onClose, currentLanguage = 'en' }: ChatSidebarProps) {
     const [user, setUser] = useState<any>(null);
     const [selectedGroup, setSelectedGroup] = useState<any>(null);
     const [showMembers, setShowMembers] = useState(false);
@@ -148,6 +149,7 @@ export default function ChatSidebar({ currentWordData, onLoadSharedWord, isOpen,
                                 onViewSharedWord={(data) => {
                                     onLoadSharedWord(data);
                                 }}
+                                currentLanguage={currentLanguage}
                             />
                         )}
 

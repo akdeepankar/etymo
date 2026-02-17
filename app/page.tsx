@@ -9,6 +9,8 @@ import Sidebar from '@/components/Sidebar';
 import FuturePrediction from '@/components/results/FuturePrediction';
 import ChatSidebar from '@/components/chat/ChatSidebar';
 import SavedCollection from '@/components/chat/SavedCollection';
+import { STATIC_CONTENT, SIDEBAR_CONTENT } from '@/lib/constants';
+import { translateObject } from '@/app/actions/translate';
 
 export default function Home() {
   const [year, setYear] = useState(2024);
@@ -25,6 +27,57 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [showCollection, setShowCollection] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Translation State
+  const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [translations, setTranslations] = useState(STATIC_CONTENT);
+  const [sidebarTranslations, setSidebarTranslations] = useState(SIDEBAR_CONTENT);
+
+  useEffect(() => {
+    const fetchTranslations = async () => {
+      if (currentLanguage === 'en') {
+        setTranslations(STATIC_CONTENT);
+        setSidebarTranslations(SIDEBAR_CONTENT);
+        return;
+      }
+
+      // Check cache first
+      try {
+        const cachedUI = sessionStorage.getItem(`translation_ui_${currentLanguage}`);
+        const cachedSidebar = sessionStorage.getItem(`translation_sidebar_${currentLanguage}`);
+
+        if (cachedUI && cachedSidebar) {
+          setTranslations(JSON.parse(cachedUI));
+          setSidebarTranslations(JSON.parse(cachedSidebar));
+          return;
+        }
+      } catch (e) {
+        console.warn("Session storage access failed", e);
+      }
+
+      try {
+        const [translatedUI, translatedSidebar] = await Promise.all([
+          translateObject(STATIC_CONTENT, currentLanguage),
+          translateObject(SIDEBAR_CONTENT, currentLanguage)
+        ]);
+
+        setTranslations(translatedUI as any);
+        setSidebarTranslations(translatedSidebar as any);
+
+        // Cache results
+        try {
+          sessionStorage.setItem(`translation_ui_${currentLanguage}`, JSON.stringify(translatedUI));
+          sessionStorage.setItem(`translation_sidebar_${currentLanguage}`, JSON.stringify(translatedSidebar));
+        } catch (e) {
+          console.warn("Failed to cache translations", e);
+        }
+      } catch (error) {
+        console.error("Failed to translate UI:", error);
+      }
+    };
+
+    fetchTranslations();
+  }, [currentLanguage]);
 
   // Playback Logic
   useEffect(() => {
@@ -174,6 +227,8 @@ export default function Home() {
           setYear(selectedYear);
           setIsPlaying(false); // Pause playback if user manually jumps
         }}
+        currentLanguage={currentLanguage}
+        translations={sidebarTranslations}
       />
 
       <div className="absolute inset-0 z-0">
@@ -183,22 +238,27 @@ export default function Home() {
       <div className="relative z-10 flex flex-col h-full pointer-events-none">
         {/* Pointer events auto for interactive elements */}
         <div className="pointer-events-auto">
-          <ActionPanel
-            onSearch={handleSearch}
-            isCompact={hasSearched}
-            isLoading={isLoading}
-            onOpenSettings={() => setShowSettings(true)}
-            onOpenCollection={() => setShowCollection(true)}
-            onToggleChat={() => setIsChatOpen(!isChatOpen)}
-            onLogoClick={() => {
-              setHasSearched(false);
-              setSearchResult(null);
-              setYear(2024);
-              setIsPlaying(false);
-              setTimelineSteps([]);
-              setMarkers([]);
-            }}
-          />
+          <div className="pointer-events-auto">
+            <ActionPanel
+              onSearch={handleSearch}
+              isCompact={hasSearched}
+              isLoading={isLoading}
+              onOpenSettings={() => setShowSettings(true)}
+              onOpenCollection={() => setShowCollection(true)}
+              onToggleChat={() => setIsChatOpen(!isChatOpen)}
+              onLogoClick={() => {
+                setHasSearched(false);
+                setSearchResult(null);
+                setYear(2024);
+                setIsPlaying(false);
+                setTimelineSteps([]);
+                setMarkers([]);
+              }}
+              currentLanguage={currentLanguage}
+              onLanguageChange={setCurrentLanguage}
+              translations={translations}
+            />
+          </div>
         </div>
 
         {/* Results Area - Future styling can function similarly to Sidebar or float */}
@@ -229,6 +289,7 @@ export default function Home() {
         onClose={() => setIsChatOpen(false)}
         currentWordData={searchResult}
         onLoadSharedWord={processWordData}
+        currentLanguage={currentLanguage}
       />
 
       <SavedCollection
