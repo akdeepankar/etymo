@@ -23,6 +23,48 @@ export default function ChatSidebar({ currentWordData, onLoadSharedWord, isOpen,
     const [members, setMembers] = useState<any[]>([]);
     const [membersLoading, setMembersLoading] = useState(false);
 
+    const SIDEBAR_UI = {
+        title: "Discussion Group",
+        members: "Members",
+        groupMembers: "Group Members",
+        loadingMembers: "Loading members...",
+        joinCode: "Join Code",
+        joinCodeNote: "Only you can see this code. Share it to invite others.",
+        signOut: "Sign Out",
+        memberRemoved: "Member removed",
+        codeCopied: "Code copied to clipboard!",
+        anonymous: "Anonymous"
+    };
+
+    const [ui, setUi] = useState(SIDEBAR_UI);
+
+    useEffect(() => {
+        const translateUI = async () => {
+            if (currentLanguage === 'en') {
+                setUi(SIDEBAR_UI);
+                return;
+            }
+
+            try {
+                const cacheKey = `chat_sidebar_ui_cache_${currentLanguage}`;
+                const cached = sessionStorage.getItem(cacheKey);
+                if (cached) {
+                    setUi(JSON.parse(cached));
+                    return;
+                }
+
+                const { translateObject } = await import('@/app/actions/translate');
+                const translated = await translateObject(SIDEBAR_UI, currentLanguage);
+                setUi(translated as any);
+                sessionStorage.setItem(cacheKey, JSON.stringify(translated));
+            } catch (e) {
+                console.error("Failed to translate Sidebar UI", e);
+            }
+        };
+
+        translateUI();
+    }, [currentLanguage]);
+
     useEffect(() => {
         // Check initial auth
         supabase.auth.getUser().then(({ data }) => {
@@ -109,7 +151,7 @@ export default function ChatSidebar({ currentWordData, onLoadSharedWord, isOpen,
                             )}
                             <h3 className="font-bold text-white flex items-center gap-2">
                                 <Users className="w-4 h-4" />
-                                {selectedGroup ? selectedGroup.name : 'Discussion Group'}
+                                {selectedGroup ? selectedGroup.name : ui.title}
                             </h3>
                         </div>
                         <div className="flex items-center gap-2">
@@ -119,14 +161,14 @@ export default function ChatSidebar({ currentWordData, onLoadSharedWord, isOpen,
                                     className="text-[10px] bg-blue-600/20 text-blue-300 hover:bg-blue-600 hover:text-white px-2 py-1 rounded-full transition-all flex items-center gap-1"
                                 >
                                     <Users className="w-3 h-3" />
-                                    Members
+                                    {ui.members}
                                 </button>
                             )}
                             {user && !selectedGroup && (
                                 <button
                                     onClick={handleSignOut}
                                     className="p-1.5 hover:bg-red-500/10 rounded-full text-white/30 hover:text-red-500 transition-all"
-                                    title="Sign Out"
+                                    title={ui.signOut}
                                 >
                                     <LogOut className="w-4 h-4" />
                                 </button>
@@ -139,9 +181,9 @@ export default function ChatSidebar({ currentWordData, onLoadSharedWord, isOpen,
 
                     <div className="flex-1 relative overflow-hidden">
                         {!user ? (
-                            <Auth onAuthSuccess={() => { }} />
+                            <Auth onAuthSuccess={() => { }} currentLanguage={currentLanguage} />
                         ) : !selectedGroup ? (
-                            <GroupManager onGroupSelected={setSelectedGroup} />
+                            <GroupManager onGroupSelected={setSelectedGroup} currentLanguage={currentLanguage} />
                         ) : (
                             <ChatRoom
                                 groupId={selectedGroup.id}
@@ -163,7 +205,7 @@ export default function ChatSidebar({ currentWordData, onLoadSharedWord, isOpen,
                                     className="absolute inset-0 bg-black/95 z-50 flex flex-col"
                                 >
                                     <div className="p-4 border-b border-white/10 flex justify-between items-center">
-                                        <h4 className="font-bold">Group Members</h4>
+                                        <h4 className="font-bold">{ui.groupMembers}</h4>
                                         <button onClick={() => setShowMembers(false)} className="hover:bg-white/10 p-1 rounded">
                                             <X className="w-4 h-4" />
                                         </button>
@@ -173,22 +215,22 @@ export default function ChatSidebar({ currentWordData, onLoadSharedWord, isOpen,
                                         {user?.id === selectedGroup?.created_by && (
                                             <div className="bg-blue-600/10 border border-blue-500/20 p-3 rounded-xl mb-4">
                                                 <div className="flex justify-between items-center mb-1">
-                                                    <span className="text-[10px] text-blue-400 uppercase tracking-widest font-mono">Join Code</span>
+                                                    <span className="text-[10px] text-blue-400 uppercase tracking-widest font-mono">{ui.joinCode}</span>
                                                     <button
                                                         onClick={copyCode}
                                                         className="text-white/40 hover:text-white transition-colors"
-                                                        title="Copy Code"
+                                                        title={ui.codeCopied}
                                                     >
                                                         <Copy className="w-3.5 h-3.5" />
                                                     </button>
                                                 </div>
                                                 <p className="text-xl font-mono font-bold tracking-widest text-white">{selectedGroup.join_code}</p>
-                                                <p className="text-[10px] text-white/30 mt-1">Only you can see this code. Share it to invite others.</p>
+                                                <p className="text-[10px] text-white/30 mt-1">{ui.joinCodeNote}</p>
                                             </div>
                                         )}
 
                                         {membersLoading ? (
-                                            <p className="text-center text-white/40 text-sm">Loading members...</p>
+                                            <p className="text-center text-white/40 text-sm">{ui.loadingMembers}</p>
                                         ) : (
                                             members.map(member => {
                                                 const isOwner = member.id === selectedGroup?.created_by;
@@ -211,7 +253,7 @@ export default function ChatSidebar({ currentWordData, onLoadSharedWord, isOpen,
                                                         </div>
                                                         <div className="flex-1">
                                                             <div className="flex items-center gap-2">
-                                                                <p className="text-sm font-bold">{member.display_name || 'Anonymous'}</p>
+                                                                <p className="text-sm font-bold">{member.display_name || ui.anonymous}</p>
                                                                 {isOwner && <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded uppercase font-bold tracking-tight">Owner</span>}
                                                                 {isSelf && <span className="text-[8px] bg-white/10 text-white/40 px-1.5 py-0.5 rounded uppercase font-bold tracking-tight">You</span>}
                                                             </div>

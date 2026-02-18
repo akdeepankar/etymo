@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Send, Share2, Trash2, Check, X, Bookmark, Languages, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { translateChat } from '@/app/actions/translate';
+import { translateChat, translateObject } from '@/app/actions/translate';
 
 interface ChatRoomProps {
     groupId: string;
@@ -27,7 +27,52 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
     const [translatedMessages, setTranslatedMessages] = useState<any[]>([]);
     const [isTranslating, setIsTranslating] = useState(false);
 
-    // Automatic translation effect
+    const CHAT_UI = {
+        clearChat: "Clear chat for me",
+        shareWord: "Share Word",
+        shareWordTooltip: "Share current word to group",
+        translating: "Translating...",
+        viewOnGlobe: "View on Globe",
+        removeFromCollection: "Remove from Collection",
+        saveToCollection: "Save to Collection",
+        readyToShare: "Ready to share?",
+        shareNow: "Share Now",
+        sharing: "Sharing...",
+        messagePlaceholder: "Message...",
+        removedFromCollection: "Removed from collection",
+        savedToCollection: "Saved to collection!",
+        sharedWordMsg: "Shared a word"
+    };
+
+    const [ui, setUi] = useState(CHAT_UI);
+
+    // Automatic translation effect for messages
+    useEffect(() => {
+        const translateUI = async () => {
+            if (currentLanguage === 'en') {
+                setUi(CHAT_UI);
+                return;
+            }
+
+            try {
+                const cacheKey = `chat_ui_cache_${currentLanguage}`;
+                const cached = sessionStorage.getItem(cacheKey);
+                if (cached) {
+                    setUi(JSON.parse(cached));
+                    return;
+                }
+
+                const translated = await translateObject(CHAT_UI, currentLanguage);
+                setUi(translated as any);
+                sessionStorage.setItem(cacheKey, JSON.stringify(translated));
+            } catch (e) {
+                console.error("Failed to translate Chat UI", e);
+            }
+        };
+
+        translateUI();
+    }, [currentLanguage]);
+
     useEffect(() => {
         const autoTranslate = async () => {
             if (!messages.length) return;
@@ -273,7 +318,7 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
                     <button
                         onClick={() => setMessages([])}
                         className="flex items-center gap-1 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white px-2 py-1 rounded transition-colors"
-                        title="Clear chat for me"
+                        title={ui.clearChat}
                     >
                         <Trash2 className="w-3 h-3" />
                     </button>
@@ -281,15 +326,15 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
                         onClick={shareWord}
                         disabled={!currentWordData}
                         className="flex items-center gap-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 px-2 py-1 rounded transition-colors disabled:opacity-30"
-                        title="Share current word to group"
+                        title={ui.shareWordTooltip}
                     >
                         <Share2 className="w-3 h-3" />
-                        Share Word
+                        {ui.shareWord}
                     </button>
                     {isTranslating && (
                         <span className="flex items-center gap-1 text-blue-400 animate-pulse">
                             <Languages className="w-3 h-3" />
-                            Translating...
+                            {ui.translating}
                         </span>
                     )}
                 </div>
@@ -325,7 +370,7 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
                                             className={`flex-1 text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-xl text-center transition-all ${isOwn ? 'bg-white text-blue-600 hover:bg-blue-50' : 'bg-blue-600 text-white hover:bg-blue-500'
                                                 }`}
                                         >
-                                            View on Globe
+                                            {ui.viewOnGlobe}
                                         </button>
                                         <button
                                             onClick={() => saveWordData(msg.word_data)}
@@ -333,7 +378,7 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
                                                 ? 'bg-white text-blue-600 shadow-inner'
                                                 : 'bg-white/10 text-white hover:bg-white/20'
                                                 }`}
-                                            title={savedWordKeys.has(`${msg.word_data.current.word}|${msg.word_data.current.language}`) ? "Remove from Collection" : "Save to Collection"}
+                                            title={savedWordKeys.has(`${msg.word_data.current.word}|${msg.word_data.current.language}`) ? ui.removeFromCollection : ui.saveToCollection}
                                         >
                                             <Bookmark className={`w-3.5 h-3.5 ${savedWordKeys.has(`${msg.word_data.current.word}|${msg.word_data.current.language}`) ? 'fill-current' : ''}`} />
                                         </button>
@@ -357,7 +402,7 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
                             className="absolute inset-x-0 bottom-full bg-blue-600 p-4 flex items-center justify-between z-10 rounded-t-xl shadow-2xl"
                         >
                             <div className="flex flex-col">
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-blue-100 opacity-60">Ready to share?</span>
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-blue-100 opacity-60">{ui.readyToShare}</span>
                                 <span className="text-sm font-bold text-white truncate max-w-[150px]">
                                     {currentWordData.current?.word}
                                 </span>
@@ -379,7 +424,7 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
                                     ) : (
                                         <Check className="w-4 h-4" />
                                     )}
-                                    {isSharing ? 'Sharing...' : 'Share Now'}
+                                    {isSharing ? ui.sharing : ui.shareNow}
                                 </button>
                             </div>
                         </motion.div>
@@ -388,7 +433,7 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
 
                 <input
                     className="flex-1 bg-white/5 rounded-full px-4 py-2 text-sm outline-none focus:bg-white/10 transition-colors"
-                    placeholder="Message..."
+                    placeholder={ui.messagePlaceholder}
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && sendMessage()}

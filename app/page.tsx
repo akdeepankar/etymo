@@ -21,7 +21,9 @@ import { translateObject } from '@/app/actions/translate';
 export default function Home() {
   const [year, setYear] = useState(2024);
   const [searchResult, setSearchResult] = useState<any>(null);
+  const [translatedSearchResult, setTranslatedSearchResult] = useState<any>(null);
   const [predictionResult, setPredictionResult] = useState<any>(null);
+  const [translatedPredictionResult, setTranslatedPredictionResult] = useState<any>(null);
   const [markers, setMarkers] = useState<any[]>([]);
   const [timelineRange, setTimelineRange] = useState<{ min: number; max: number } | null>(null);
   const [timelineSteps, setTimelineSteps] = useState<number[]>([]);
@@ -159,6 +161,60 @@ export default function Home() {
 
     fetchTranslations();
   }, [currentLanguage]);
+
+  // Translate search results whenever language or result changes
+  useEffect(() => {
+    const translateResult = async () => {
+      if (!searchResult) {
+        setTranslatedSearchResult(null);
+        return;
+      }
+
+      if (currentLanguage === 'en') {
+        setTranslatedSearchResult(searchResult);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        // Translate the whole etymology object
+        const translated = await translateObject(searchResult, currentLanguage);
+        setTranslatedSearchResult(translated);
+      } catch (err) {
+        console.error("Failed to translate search result:", err);
+        setTranslatedSearchResult(searchResult); // Fallback to original
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    translateResult();
+  }, [searchResult, currentLanguage]);
+
+  // Translate predictions
+  useEffect(() => {
+    const translatePrediction = async () => {
+      if (!predictionResult) {
+        setTranslatedPredictionResult(null);
+        return;
+      }
+
+      if (currentLanguage === 'en') {
+        setTranslatedPredictionResult(predictionResult);
+        return;
+      }
+
+      try {
+        const translated = await translateObject(predictionResult, currentLanguage);
+        setTranslatedPredictionResult(translated);
+      } catch (err) {
+        console.error("Failed to translate prediction:", err);
+        setTranslatedPredictionResult(predictionResult);
+      }
+    };
+
+    translatePrediction();
+  }, [predictionResult, currentLanguage]);
 
   // Playback Logic
   const [playbackSpeed, setPlaybackSpeed] = useState<'1x' | '0.5x'>('1x');
@@ -389,7 +445,7 @@ export default function Home() {
 
       {/* Sidebar for details */}
       <Sidebar
-        data={searchResult}
+        data={translatedSearchResult || searchResult}
         currentYear={year}
         onYearSelect={(selectedYear) => {
           setYear(selectedYear);
@@ -413,7 +469,7 @@ export default function Home() {
             isExploreMode={isExploreMode}
           />
         ) : (
-          <GalaxyView data={searchResult} />
+          <GalaxyView data={translatedSearchResult || searchResult} />
         )}
       </div>
 
@@ -445,9 +501,9 @@ export default function Home() {
 
         {/* Results Area - Future styling can function similarly to Sidebar or float */}
         <div className="flex-1 w-full flex justify-end p-10 pointer-events-none">
-          {year > 2024 && predictionResult && (
+          {year > 2024 && (translatedPredictionResult || predictionResult) && (
             <div className="pointer-events-auto">
-              <FuturePrediction data={{ ...predictionResult, year }} />
+              <FuturePrediction data={{ ...(translatedPredictionResult || predictionResult), year }} />
             </div>
           )}
         </div>

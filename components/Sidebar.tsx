@@ -36,45 +36,9 @@ export default function Sidebar({
     const [isMinimized, setIsMinimized] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
     const activeRef = useRef<HTMLDivElement>(null);
-    const [displayData, setDisplayData] = useState<any>(data);
-    const [isTranslating, setIsTranslating] = useState(false);
-
     useEffect(() => {
         checkIfSaved();
     }, [data]);
-
-    // Handle data translation
-    useEffect(() => {
-        if (!data) {
-            setDisplayData(null);
-            return;
-        }
-
-        const translateData = async () => {
-            if (currentLanguage === 'en') {
-                setDisplayData(data);
-                return;
-            }
-
-            setIsTranslating(true);
-            try {
-                // We create a clean object with just the translatable strings to be efficient/safe
-                // or we can just try to translate the whole thing if it's small enough.
-                // The structure is relatively small (root + path array + current).
-                // Let's translate the whole object for simplicity as per user request "sidebar content also".
-                const translated = await translateObject(data, currentLanguage);
-                setDisplayData(translated);
-            } catch (error) {
-                console.error("Translation failed", error);
-                // Fallback to original data
-                setDisplayData(data);
-            } finally {
-                setIsTranslating(false);
-            }
-        };
-
-        translateData();
-    }, [data, currentLanguage]);
 
     const checkIfSaved = async () => {
         if (!data) return;
@@ -101,11 +65,14 @@ export default function Sidebar({
         }
     }, [currentYear]);
 
-    if (!data || !displayData) return null;
+    if (!data) return null;
 
     // Helper to check if a step is "active" (happened in the past relative to currentYear)
     const isActive = (stepYear: number) => stepYear <= currentYear;
     const isCurrent = (stepYear: number) => stepYear === currentYear;
+
+    const displayData = data;
+    const isTranslating = false;
 
     // Helper for handling click
     const handleClick = (year?: number) => {

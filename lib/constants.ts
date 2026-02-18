@@ -1,9 +1,11 @@
-export type ContentKey = 'title' | 'subtitle' | 'placeholder';
+export type ContentKey = 'title' | 'subtitle' | 'placeholder' | 'collection' | 'signOut';
 
 export const STATIC_CONTENT: Record<ContentKey, string> = {
     title: "Every word has a journey.",
     subtitle: "Trace the origins through time and space.",
-    placeholder: "Enter a word (e.g. 'Robot', 'Tea', 'Galaxy')..."
+    placeholder: "Enter a word (e.g. 'Robot', 'Tea', 'Galaxy')...",
+    collection: "My Collection",
+    signOut: "Sign Out"
 };
 
 export const SIDEBAR_CONTENT = {

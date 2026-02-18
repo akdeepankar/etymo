@@ -21,6 +21,8 @@ interface ActionPanelProps {
         title: string;
         subtitle: string;
         placeholder: string;
+        collection: string;
+        signOut: string;
     };
 }
 
@@ -37,7 +39,9 @@ export default function ActionPanel({
     translations = {
         title: "Every word has a journey.",
         subtitle: "Trace the origins through time and space.",
-        placeholder: "Enter a word (e.g. 'Robot', 'Tea', 'Galaxy')..."
+        placeholder: "Enter a word (e.g. 'Robot', 'Tea', 'Galaxy')...",
+        collection: "My Collection",
+        signOut: "Sign Out"
     }
 }: ActionPanelProps) {
     const [term, setTerm] = useState('');
@@ -155,7 +159,7 @@ export default function ActionPanel({
                             <button
                                 onClick={onOpenCollection}
                                 className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-                                title="My Collection"
+                                title={translations.collection}
                             >
                                 <Bookmark className="w-5 h-5" />
                             </button>
@@ -167,7 +171,7 @@ export default function ActionPanel({
                             <button
                                 onClick={handleSignOut}
                                 className="p-2 rounded-full hover:bg-red-500/10 text-white/30 hover:text-red-500 transition-all ml-2"
-                                title="Sign Out"
+                                title={translations.signOut}
                             >
                                 <LogOut className="w-5 h-5" />
                             </button>
@@ -230,7 +234,7 @@ export default function ActionPanel({
                             <button
                                 onClick={onOpenCollection}
                                 className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-                                title="My Collection"
+                                title={translations.collection}
                             >
                                 <Bookmark className="w-5 h-5" />
                             </button>
@@ -242,7 +246,7 @@ export default function ActionPanel({
                             <button
                                 onClick={handleSignOut}
                                 className="p-2 rounded-full hover:bg-red-500/10 text-white/30 hover:text-red-500 transition-all ml-2"
-                                title="Sign Out"
+                                title={translations.signOut}
                             >
                                 <LogOut className="w-5 h-5" />
                             </button>

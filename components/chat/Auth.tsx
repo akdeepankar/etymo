@@ -1,6 +1,6 @@
 'use client';
 import { supabase } from '@/lib/supabaseClient';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -13,14 +13,57 @@ const AVATARS = [
     "https://img.freepik.com/premium-vector/male-face-avatar-icon-set-flat-design-social-media-profiles_1281173-3806.jpg?w=360"
 ];
 
-export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
+export default function Auth({ onAuthSuccess, currentLanguage = 'en' }: { onAuthSuccess: () => void; currentLanguage?: string }) {
     const [view, setView] = useState<'login' | 'signup'>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
 
+    const AUTH_UI = {
+        signIn: "Sign In",
+        register: "Register",
+        avatar: "Avatar",
+        displayName: "Display Name",
+        email: "Email",
+        password: "Password",
+        createAccount: "Create Account",
+        processing: "Processing...",
+        welcomeBack: "Welcome back!",
+        accountCreated: "Account created! Please log in.",
+        enterName: "Please enter a display name."
+    };
+
+    const [ui, setUi] = useState(AUTH_UI);
+
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const translateUI = async () => {
+            if (currentLanguage === 'en') {
+                setUi(AUTH_UI);
+                return;
+            }
+
+            try {
+                const cacheKey = `auth_ui_cache_${currentLanguage}`;
+                const cached = sessionStorage.getItem(cacheKey);
+                if (cached) {
+                    setUi(JSON.parse(cached));
+                    return;
+                }
+
+                const { translateObject } = await import('@/app/actions/translate');
+                const translated = await translateObject(AUTH_UI, currentLanguage);
+                setUi(translated as any);
+                sessionStorage.setItem(cacheKey, JSON.stringify(translated));
+            } catch (e) {
+                console.error("Failed to translate Auth UI", e);
+            }
+        };
+
+        translateUI();
+    }, [currentLanguage]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -29,7 +72,7 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
         if (error) {
             toast.error(error.message);
         } else {
-            toast.success('Welcome back!');
+            toast.success(ui.welcomeBack);
             onAuthSuccess();
         }
         setLoading(false);
@@ -39,7 +82,7 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
         e.preventDefault();
 
         if (!displayName.trim()) {
-            toast.error('Please enter a display name.');
+            toast.error(ui.enterName);
             return;
         }
 
@@ -62,11 +105,11 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
         })();
 
         toast.promise(signUpPromise, {
-            loading: 'Creating your account...',
+            loading: ui.processing,
             success: () => {
                 setView('login');
                 setPassword('');
-                return 'Account created! Please log in.';
+                return ui.accountCreated;
             },
             error: (err) => err.message || 'Failed to create account',
         });
@@ -82,13 +125,13 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
                     onClick={() => setView('login')}
                     className={`flex-1 py-3 text-sm font-medium transition-colors ${view === 'login' ? 'text-white border-b-2 border-blue-500' : 'text-white/50 hover:text-white'}`}
                 >
-                    Sign In
+                    {ui.signIn}
                 </button>
                 <button
                     onClick={() => setView('signup')}
                     className={`flex-1 py-3 text-sm font-medium transition-colors ${view === 'signup' ? 'text-white border-b-2 border-blue-500' : 'text-white/50 hover:text-white'}`}
                 >
-                    Register
+                    {ui.register}
                 </button>
             </div>
 
@@ -99,7 +142,7 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
                         <>
                             {/* Avatar Selection */}
                             <div className="space-y-1.5">
-                                <label className="text-[10px] text-white/40 uppercase tracking-widest font-mono">Avatar</label>
+                                <label className="text-[10px] text-white/40 uppercase tracking-widest font-mono">{ui.avatar}</label>
                                 <div className="grid grid-cols-6 gap-2">
                                     {AVATARS.map((url) => (
                                         <button
@@ -120,7 +163,7 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[10px] text-white/40 uppercase tracking-widest font-mono">Display Name</label>
+                                <label className="text-[10px] text-white/40 uppercase tracking-widest font-mono">{ui.displayName}</label>
                                 <input
                                     className="w-full bg-white/5 border border-white/10 p-2.5 rounded-lg text-sm placeholder:text-white/20 outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all"
                                     placeholder="e.g. Explorer"
@@ -134,7 +177,7 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
                     )}
 
                     <div className="space-y-1">
-                        <label className="text-[10px] text-white/40 uppercase tracking-widest font-mono">Email</label>
+                        <label className="text-[10px] text-white/40 uppercase tracking-widest font-mono">{ui.email}</label>
                         <input
                             className="w-full bg-white/5 border border-white/10 p-2.5 rounded-lg text-sm placeholder:text-white/20 outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all"
                             placeholder="email@example.com"
@@ -147,7 +190,7 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[10px] text-white/40 uppercase tracking-widest font-mono">Password</label>
+                        <label className="text-[10px] text-white/40 uppercase tracking-widest font-mono">{ui.password}</label>
                         <input
                             className="w-full bg-white/5 border border-white/10 p-2.5 rounded-lg text-sm placeholder:text-white/20 outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all"
                             placeholder="••••••••"
@@ -169,10 +212,10 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
                         {loading ? (
                             <span className="flex items-center justify-center gap-2">
                                 <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Processing...
+                                {ui.processing}
                             </span>
                         ) : (
-                            view === 'login' ? 'Sign In' : 'Create Account'
+                            view === 'login' ? ui.signIn : ui.createAccount
                         )}
                     </button>
                 </div>
