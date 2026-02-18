@@ -57,7 +57,7 @@ Language is social. Join or create discussion groups with other explorers across
 *   **AI**: [OpenAI GPT-4o](https://openai.com/)
 *   **Database & Auth**: [Supabase](https://supabase.com/)
 *   **I18n**: [Lingo.dev](https://lingo.dev/)
-*   **Animations**: [Framer Motion](https://www.framer.com/motion/)
+
 
 ---
 

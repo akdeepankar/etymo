@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, Text, Float, Line, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
-import { motion } from 'framer-motion-3d';
+
 
 interface GalaxyNode {
     id: string;
