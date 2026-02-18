@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Bookmark, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Bookmark, Loader2, Share2, Globe } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
@@ -14,6 +14,9 @@ interface SidebarProps {
     onYearSelect?: (year: number) => void;
     currentLanguage?: string;
     translations?: typeof SIDEBAR_CONTENT;
+    onOpenShare?: (data: any) => void;
+    onToggleExploreMode?: () => void;
+    isExploreMode?: boolean;
 }
 
 export default function Sidebar({
@@ -21,7 +24,10 @@ export default function Sidebar({
     currentYear = 2024,
     onYearSelect,
     currentLanguage = 'en',
-    translations = SIDEBAR_CONTENT
+    translations = SIDEBAR_CONTENT,
+    onOpenShare,
+    onToggleExploreMode,
+    isExploreMode = false
 }: SidebarProps) {
     const [isMinimized, setIsMinimized] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
@@ -178,16 +184,38 @@ export default function Sidebar({
                 >
                     <div className="flex justify-between items-start mb-2">
                         <div className="text-xs font-mono uppercase text-blue-400 tracking-widest">{translations.current}</div>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                saveWordData();
-                            }}
-                            className={`p-2 rounded-lg transition-all ${isSaved ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/10 text-white/40 hover:text-blue-400'}`}
-                            title={isSaved ? translations.removeFromCollection : translations.saveToCollection}
-                        >
-                            <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
-                        </button>
+                        <div className="flex gap-1">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleExploreMode && onToggleExploreMode();
+                                }}
+                                className={`p-2 rounded-lg transition-all ${isExploreMode ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/10 text-white/40 hover:text-blue-400'}`}
+                                title={isExploreMode ? "Exit Explore Mode" : "View Full Journey on Globe"}
+                            >
+                                <Globe className={`w-4 h-4 ${isExploreMode ? 'fill-current' : ''}`} />
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenShare && onOpenShare(displayData);
+                                }}
+                                className="p-2 rounded-lg transition-all hover:bg-white/10 text-white/40 hover:text-blue-400"
+                                title="Share Summary Card"
+                            >
+                                <Share2 className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    saveWordData();
+                                }}
+                                className={`p-2 rounded-lg transition-all ${isSaved ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/10 text-white/40 hover:text-blue-400'}`}
+                                title={isSaved ? translations.removeFromCollection : translations.saveToCollection}
+                            >
+                                <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+                            </button>
+                        </div>
                     </div>
                     <div onClick={() => handleClick(displayData.current.year)} className="cursor-pointer">
                         <div className="text-4xl font-bold text-white font-serif mb-1">{displayData.current.word}</div>

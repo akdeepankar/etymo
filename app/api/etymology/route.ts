@@ -35,6 +35,9 @@ export async function POST(req: Request) {
                         3. **Rich Context**: The 'meaning' field should be descriptive, explaining distinct nuances of that era's usage.
                         4. **Granularity**: Provide at least 4-6 intermediate steps in the 'path' if the word's history allows.
                         5. **Timeline**: Ensure chronological order from root -> path -> current.
+                        6. **Cultural Insight (IMPORTANT)**: For each step (root, path items, current), include a "cultural_insight" object.
+                           - Find a famous local idiom, proverb, or poetic saying from that specific language/era involving the word.
+                           - Structure: { "native_idiom": string (original script), "romanized": string (optional), "meaning": string (English), "origin_story": string (brief context) }.
                         `
                     },
                     { role: "user", content: `Trace the detailed etymology of "${word}".` }

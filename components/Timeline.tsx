@@ -1,6 +1,6 @@
 'use client';
 
-import { Play, Pause, SkipBack, SkipForward, Rewind } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Rewind, Gauge, Video } from 'lucide-react';
 import { Dispatch, SetStateAction } from 'react';
 
 interface TimelineProps {
@@ -10,9 +10,24 @@ interface TimelineProps {
     isPlaying: boolean;
     onTogglePlay: () => void;
     isChatOpen?: boolean;
+    playbackSpeed: '1x' | '0.5x'; // Keeping '0.5x' as per original file content
+    setPlaybackSpeed: Dispatch<SetStateAction<'1x' | '0.5x'>>; // Keeping '0.5x' as per original file content
+    onExport: () => void;
+    isRecording: boolean;
 }
 
-export default function Timeline({ year, setYear, steps, isPlaying, onTogglePlay, isChatOpen }: TimelineProps) {
+export default function Timeline({
+    year,
+    setYear,
+    steps,
+    isPlaying,
+    onTogglePlay,
+    isChatOpen,
+    playbackSpeed,
+    setPlaybackSpeed,
+    onExport,
+    isRecording
+}: TimelineProps) {
     if (!steps || steps.length === 0) return null;
 
     const currentIndex = steps.indexOf(year);
@@ -24,6 +39,16 @@ export default function Timeline({ year, setYear, steps, isPlaying, onTogglePlay
             setYear(steps[newIndex]);
         }
     };
+
+    const cycleSpeed = () => {
+        if (playbackSpeed === '1x') setPlaybackSpeed('0.5x');
+        else setPlaybackSpeed('1x');
+    };
+
+    const speedLabel = {
+        '1x': '1x',
+        '0.5x': '0.5x'
+    }[playbackSpeed];
 
     return (
         <div
@@ -74,8 +99,32 @@ export default function Timeline({ year, setYear, steps, isPlaying, onTogglePlay
                         </div>
                     </div>
 
-                    {/* Reset Button */}
-                    <div className="flex gap-2">
+                    {/* Right Side Controls */}
+                    <div className="flex items-center gap-2">
+                        {/* Speed Control */}
+                        <button
+                            onClick={cycleSpeed}
+                            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-white/70 hover:text-white transition-colors"
+                            title="Playback Speed"
+                        >
+                            <Gauge className="w-3.5 h-3.5" />
+                            <span className="w-10 text-center">{speedLabel}</span>
+                        </button>
+
+                        {/* Export Button */}
+                        <button
+                            onClick={onExport}
+                            disabled={isRecording}
+                            className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${isRecording
+                                    ? 'bg-red-500/20 text-red-400 animate-pulse'
+                                    : 'bg-white/5 hover:bg-white/10 text-white/50 hover:text-white'
+                                }`}
+                            title={isRecording ? "Recording..." : "Export Animation (WebM)"}
+                        >
+                            <Video className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Reset Button */}
                         {currentIndex > 0 && (
                             <button
                                 onClick={() => handleStepChange(0)}
