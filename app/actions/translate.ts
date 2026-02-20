@@ -19,6 +19,7 @@ export async function translateText(
         const result = await lingoDotDev.localizeText(text, {
             sourceLocale: sourceLocale || null,
             targetLocale,
+            fast: true
         });
         return result || text;
     } catch (error) {
@@ -79,18 +80,12 @@ export async function translateChat(
 
         if (cleanConversation.length === 0) return [];
 
-        // Parallel translations
-        const translated = await Promise.all(cleanConversation.map(async (msg) => {
-            try {
-                const translatedText = await translateText(msg.text, targetLocale, sourceLocale);
-                return {
-                    name: msg.name,
-                    text: translatedText || msg.text
-                };
-            } catch (e) {
-                return msg;
-            }
-        }));
+        // Use the specialized localizeChat method with fast mode for speed
+        const translated = await lingoDotDev.localizeChat(cleanConversation, {
+            sourceLocale: sourceLocale || null,
+            targetLocale,
+            fast: true // Speed is priority for chat
+        });
 
         return JSON.parse(JSON.stringify(translated));
     } catch (error) {

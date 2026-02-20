@@ -151,9 +151,9 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
             }
         };
 
-        const timeoutId = setTimeout(autoTranslate, 300);
+        const timeoutId = setTimeout(autoTranslate, 50); // Near-instant trigger
         return () => clearTimeout(timeoutId);
-    }, [messages, currentLanguage, currentUserId, groupId, translationMap, translatingIds]);
+    }, [messages, currentLanguage, currentUserId, groupId]); // Simplified dependencies to avoid infinite loops
 
     useEffect(() => {
         // Get current user id
