@@ -61,7 +61,7 @@ export async function translateObject(
 export async function translateChat(
     conversation: { name: string; text: string }[],
     targetLocale: string,
-    sourceLocale?: string
+    sourceLocale: string = "en"
 ) {
     if (!Array.isArray(conversation) || conversation.length === 0) return [];
 
@@ -70,24 +70,33 @@ export async function translateChat(
             return conversation;
         }
 
-        // Sanitize input
-        const cleanConversation = conversation
-            .filter(item => item && typeof item === 'object' && item.text)
-            .map(item => ({
-                name: String(item.name || 'Unknown'),
-                text: String(item.text)
-            }));
+        // Extract texts to translate
+        const textsToTranslate = conversation
+            .filter(item => item && item.text)
+            .map(item => String(item.text));
 
-        if (cleanConversation.length === 0) return [];
+        if (textsToTranslate.length === 0) return conversation;
 
-        // Use the specialized localizeChat method with fast mode for speed
-        const translated = await lingoDotDev.localizeChat(cleanConversation, {
-            sourceLocale: sourceLocale || null,
+        // Use the specialized localizeStringArray method
+        const translatedTexts = await lingoDotDev.localizeStringArray(textsToTranslate, {
+            sourceLocale,
             targetLocale,
-            fast: true // Speed is priority for chat
+            fast: true
         });
 
-        return JSON.parse(JSON.stringify(translated));
+        // Map back to conversation structure
+        let tIdx = 0;
+        const translatedConversation = conversation.map(msg => {
+            if (msg && msg.text) {
+                return {
+                    name: msg.name,
+                    text: translatedTexts[tIdx++] || msg.text
+                };
+            }
+            return msg;
+        });
+
+        return JSON.parse(JSON.stringify(translatedConversation));
     } catch (error) {
         console.error("Action error in translateChat:", error);
         return conversation;

@@ -472,6 +472,7 @@ export default function Home() {
         isExploreMode={isExploreMode}
         onToggleViewMode={() => setViewMode(viewMode === 'globe' ? 'galaxy' : 'globe')}
         viewMode={viewMode}
+        isLoading={isLoading}
       />
 
       <div className="absolute inset-0 z-0">

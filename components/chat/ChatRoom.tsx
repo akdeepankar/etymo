@@ -27,6 +27,7 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
     const [translationMap, setTranslationMap] = useState<Record<string, string>>({});
     const [translatingIds, setTranslatingIds] = useState<Set<string>>(new Set());
     const [isTranslating, setIsTranslating] = useState(false);
+    const translationInProgress = useRef(false);
 
     const CHAT_UI = {
         clearChat: "Clear chat for me",
@@ -103,7 +104,7 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
                 msg.user_id !== currentUserId && !translationMap[msg.id] && !translatingIds.has(msg.id)
             );
 
-            if (messagesToTranslate.length === 0) return;
+            if (messagesToTranslate.length === 0 || translationInProgress.current) return;
 
             // Mark them as translating immediately
             setTranslatingIds(prev => {
@@ -112,48 +113,77 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
                 return next;
             });
 
+            translationInProgress.current = true;
             setIsTranslating(true);
+
             try {
                 const conversation = messagesToTranslate.map(msg => ({
+                    id: msg.id,
                     name: msg.profile?.display_name || 'Unknown',
                     text: msg.content || ''
                 }));
 
-                const translated = await translateChat(conversation, currentLanguage);
+                const translationPromise = translateChat(conversation, currentLanguage);
+                const timeoutValue = Symbol('timeout');
+                const timeoutPromise = new Promise(resolve =>
+                    setTimeout(() => resolve(timeoutValue), 15000) // 15s timeout
+                );
 
+                const result = await Promise.race([translationPromise, timeoutPromise]);
+
+                if (result === timeoutValue) {
+                    console.warn(`Translation TIMEOUT [15s] for group ${groupId}. Falling back to original text.`);
+                    setTranslationMap(prev => {
+                        const newMap = { ...prev };
+                        messagesToTranslate.forEach(msg => {
+                            if (!newMap[msg.id]) newMap[msg.id] = msg.content;
+                        });
+                        return newMap;
+                    });
+                } else {
+                    const translated = result as any[];
+                    setTranslationMap(prev => {
+                        const newMap = { ...prev };
+                        messagesToTranslate.forEach((originalMsg, index) => {
+                            const tMsg = translated[index];
+                            if (tMsg && tMsg.text) {
+                                newMap[originalMsg.id] = tMsg.text;
+                            } else {
+                                newMap[originalMsg.id] = originalMsg.content;
+                            }
+                        });
+
+                        const cacheKey = `chat_cache_${groupId}_${currentLanguage}`;
+                        try {
+                            sessionStorage.setItem(cacheKey, JSON.stringify(newMap));
+                        } catch (e) { console.warn("Cache save failed", e); }
+
+                        return newMap;
+                    });
+                }
+            } catch (error) {
+                console.error("Auto-translation failed:", error);
                 setTranslationMap(prev => {
                     const newMap = { ...prev };
-                    translated.forEach((tMsg: any, index: number) => {
-                        const originalMsg = messagesToTranslate[index];
-                        if (originalMsg && tMsg) {
-                            // Use translated text or fallback to original to ensure it's marked as "done"
-                            newMap[originalMsg.id] = tMsg.text || originalMsg.content;
-                        }
+                    messagesToTranslate.forEach(msg => {
+                        if (!newMap[msg.id]) newMap[msg.id] = msg.content;
                     });
-
-                    const cacheKey = `chat_cache_${groupId}_${currentLanguage}`;
-                    try {
-                        sessionStorage.setItem(cacheKey, JSON.stringify(newMap));
-                    } catch (e) { console.warn("Cache save failed", e); }
-
                     return newMap;
                 });
-            } catch (error) {
-                console.error("Auto-translation failed", error);
             } finally {
-                // ALWAYS clear IDs from translating set, even on failure
                 setTranslatingIds(prev => {
                     const next = new Set(prev);
                     messagesToTranslate.forEach(m => next.delete(m.id));
                     return next;
                 });
                 setIsTranslating(false);
+                translationInProgress.current = false;
             }
         };
 
-        const timeoutId = setTimeout(autoTranslate, 50); // Near-instant trigger
+        const timeoutId = setTimeout(autoTranslate, 100);
         return () => clearTimeout(timeoutId);
-    }, [messages, currentLanguage, currentUserId, groupId]); // Simplified dependencies to avoid infinite loops
+    }, [messages, currentLanguage, currentUserId, groupId]);
 
     useEffect(() => {
         // Get current user id
@@ -178,7 +208,6 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
                 table: 'messages',
                 filter: `group_id=eq.${groupId}`
             }, async (payload) => {
-                console.log('Realtime message received:', payload);
                 const { data, error } = await supabase
                     .from('messages')
                     .select('*, profile:profiles(*)')
@@ -343,8 +372,10 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
                 {messages.map((msg) => {
                     const isOwn = msg.user_id === currentUserId;
                     const profile = msg.profile;
-                    const isTranslatingMsg = translatingIds.has(msg.id);
                     const translatedText = translationMap[msg.id];
+
+                    // Show dots if: not our message, not English, and no translation result yet
+                    const isTranslatingMsg = !isOwn && currentLanguage !== 'en' && !translatedText;
 
                     return (
                         <div key={msg.id} className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
@@ -364,14 +395,23 @@ export default function ChatRoom({ groupId, currentWordData, onViewSharedWord, c
                                 } ${msg.is_shared_word ? 'border border-blue-400/30' : ''}`}>
 
                                 {isTranslatingMsg ? (
-                                    <div className="flex flex-col gap-1 py-1">
-                                        <div className="flex items-center gap-2 text-white/40 italic text-xs">
-                                            <Loader2 className="w-3 h-3 animate-spin" />
-                                            {ui.incomingMessage}
-                                        </div>
-                                        <div className="text-[10px] text-white/20 uppercase tracking-tighter animate-pulse">
-                                            {ui.translatingMessage}
-                                        </div>
+                                    <div className="flex items-center gap-1.5 py-1.5 px-0.5">
+                                        {[0, 1, 2].map((i) => (
+                                            <motion.div
+                                                key={i}
+                                                className={`w-1.5 h-1.5 rounded-full ${isOwn ? 'bg-white/80' : 'bg-blue-400/80'}`}
+                                                animate={{
+                                                    y: [0, -4, 0],
+                                                    opacity: [0.4, 1, 0.4]
+                                                }}
+                                                transition={{
+                                                    duration: 0.8,
+                                                    repeat: Infinity,
+                                                    delay: i * 0.15,
+                                                    ease: "easeInOut"
+                                                }}
+                                            />
+                                        ))}
                                     </div>
                                 ) : (
                                     <>

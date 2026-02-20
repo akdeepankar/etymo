@@ -19,6 +19,7 @@ interface SidebarProps {
     isExploreMode?: boolean;
     onToggleViewMode?: () => void;
     viewMode?: 'globe' | 'galaxy';
+    isLoading?: boolean;
 }
 
 export default function Sidebar({
@@ -31,7 +32,8 @@ export default function Sidebar({
     onToggleExploreMode,
     isExploreMode = false,
     onToggleViewMode,
-    viewMode = 'globe'
+    viewMode = 'globe',
+    isLoading = false
 }: SidebarProps) {
     const [isMinimized, setIsMinimized] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
@@ -72,7 +74,7 @@ export default function Sidebar({
     const isCurrent = (stepYear: number) => stepYear === currentYear;
 
     const displayData = data;
-    const isTranslating = false;
+    const isTranslating = isLoading;
 
     // Helper for handling click
     const handleClick = (year?: number) => {
@@ -143,8 +145,25 @@ export default function Sidebar({
 
                 {/* Loading Overlay */}
                 {isTranslating && (
-                    <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
-                        <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+                    <div className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center backdrop-blur-md rounded-2xl">
+                        <div className="flex items-center gap-2">
+                            {[0, 1, 2].map((i) => (
+                                <motion.div
+                                    key={i}
+                                    className="w-2.5 h-2.5 rounded-full bg-blue-400"
+                                    animate={{
+                                        y: [0, -6, 0],
+                                        opacity: [0.4, 1, 0.4]
+                                    }}
+                                    transition={{
+                                        duration: 0.8,
+                                        repeat: Infinity,
+                                        delay: i * 0.15,
+                                        ease: "easeInOut"
+                                    }}
+                                />
+                            ))}
+                        </div>
                     </div>
                 )}
 
