@@ -2,11 +2,12 @@
 
 **Etymo** is an immersive, 3D etymological explorer that turns the dry history of words into a vibrant, cinematic journey through time and space.
 
-## Demo Video 
+## 🚀 Live Demo
+[etymologic.vercel.app](https://etymologic.vercel.app)
 
-<div align="center">
-  <iframe width="100%" height="400" src="https://www.youtube.com/embed/t0RMhiHzhTE" title="Etymo Demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-</div>
+## 🎬 Demo Video 
+
+[![Etymo Demo](https://img.youtube.com/vi/t0RMhiHzhTE/maxresdefault.jpg)](https://www.youtube.com/watch?v=t0RMhiHzhTE)
 
 ## 💡 The Problem
 Etymology is the hidden DNA of human culture, yet it is often buried in dense dictionaries or static text. 
