@@ -4,7 +4,9 @@
 
 ## Demo Video 
 
-[![Etymo Video](https://img.youtube.com/vi/t0RMhiHzhTE/maxresdefault.jpg)](https://youtu.be/t0RMhiHzhTE)
+<div align="center">
+  <iframe width="100%" height="400" src="https://www.youtube.com/embed/t0RMhiHzhTE" title="Etymo Demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+</div>
 
 ## 💡 The Problem
 Etymology is the hidden DNA of human culture, yet it is often buried in dense dictionaries or static text. 
